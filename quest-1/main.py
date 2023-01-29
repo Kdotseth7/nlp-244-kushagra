@@ -38,7 +38,8 @@ def parse_args():
     parser.add_argument(
         "--nhid", type=int, default=200, help="number of hidden units per layer"
     )
-    parser.add_argument("--bidirectional", type=bool, default=False, help="bi-directional cell")
+    # parser.add_argument("--bidirectional", type=bool, default=False, help="bi-directional cell")
+    parser.add_argument("--bidirectional", type=bool, default=True, help="bi-directional cell")
     parser.add_argument("--nlayers", type=int, default=2, help="number of layers")
     parser.add_argument("--lr", type=float, default=20, help="initial learning rate")
     parser.add_argument("--clip", type=float, default=0.25, help="gradient clipping")
@@ -54,6 +55,9 @@ def parse_args():
         help="dropout applied to layers (0 = no dropout)",
     )
     parser.add_argument("--seed", type=int, default=1111, help="random seed")
+    # parser.add_argument("--rnn_type", type=str, default="elman", help="rnn type")
+    # parser.add_argument("--rnn_type", type=str, default="gru", help="rnn type")
+    parser.add_argument("--rnn_type", type=str, default="lstm", help="rnn type")
     parser.add_argument(
         "--log-interval", type=int, default=200, metavar="N", help="report interval"
     )
@@ -240,6 +244,7 @@ if __name__ == "__main__":
                      args.nhid,
                      args.nlayers,
                      args.bidirectional,
+                     args.rnn_type,
                      args.dropout).to(device)
     
     criterion = nn.NLLLoss()
