@@ -9,6 +9,8 @@ import data
 from utils import get_device, repackage_hidden, make_reproducible
 from rnnlm import RNNModel
 
+from collections import Counter
+
 
 def init_glove_embeddings(model: RNNModel, glove_path):
     # TODO: implement this function
@@ -25,7 +27,8 @@ def parse_args():
     parser.add_argument(
         "--data",
         type=str,
-        default="./data/wikitext-2-mini",
+        # default="./data/wikitext-2-mini",
+        default="./data/wikitext-2",
         help="location of the data corpus",
     )
 
@@ -212,14 +215,25 @@ if __name__ == "__main__":
     make_reproducible(args.seed)
     device = get_device()
     corpus = data.Corpus(args.data)
-    eval_batch_size = 10
+    # print(corpus.train)
+    # print(len(corpus.train))
+    # print(len(corpus.vocab.type2index))
+    print(corpus.vocab.type2index['<unk>'])
+    
+    unk_token_idx = corpus.vocab.type2index['<unk>']
+    counts = Counter(corpus.train.detach().cpu().numpy())
+    unk_count = counts[unk_token_idx]
+    percentage_unk = unk_count/len(corpus.train) * 100
+    print(f'% of <unk> tokens: {round(percentage_unk, 4)}')
+            
+    # eval_batch_size = 10
 
-    test_data = batchify(corpus.test, eval_batch_size)
+    # test_data = batchify(corpus.test, eval_batch_size)
 
-    ntokens = len(corpus.vocab)
-    model = RNNModel(ntokens, args.emsize, args.nhid, args.nlayers, args.dropout).to(
-        device
-    )
-    criterion = nn.NLLLoss()
-    train_model(corpus, args, model, criterion)
-    test_model(corpus, args, model, criterion)
+    # ntokens = len(corpus.vocab)
+    # model = RNNModel(ntokens, args.emsize, args.nhid, args.nlayers, args.dropout).to(
+    #     device
+    # )
+    # criterion = nn.NLLLoss()
+    # train_model(corpus, args, model, criterion)
+    # test_model(corpus, args, model, criterion)
