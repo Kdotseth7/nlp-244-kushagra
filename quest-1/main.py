@@ -10,6 +10,7 @@ from utils import get_device, repackage_hidden, make_reproducible
 from rnnlm import RNNModel
 
 from collections import Counter
+import math
 
 
 def init_glove_embeddings(model: RNNModel, glove_path):
@@ -18,8 +19,7 @@ def init_glove_embeddings(model: RNNModel, glove_path):
 
 
 def compute_perplexity(loss: float):
-    # TODO: implement this function
-    raise NotImplementedError
+    return math.exp(loss)
 
 
 def parse_args():
@@ -27,8 +27,8 @@ def parse_args():
     parser.add_argument(
         "--data",
         type=str,
-        # default="./data/wikitext-2-mini",
-        default="./data/wikitext-2",
+        default="./data/wikitext-2-mini",
+        # default="./data/wikitext-2",
         help="location of the data corpus",
     )
 
@@ -38,6 +38,7 @@ def parse_args():
     parser.add_argument(
         "--nhid", type=int, default=200, help="number of hidden units per layer"
     )
+    parser.add_argument("--bidirectional", type=bool, default=False, help="bi-directional cell")
     parser.add_argument("--nlayers", type=int, default=2, help="number of layers")
     parser.add_argument("--lr", type=float, default=20, help="initial learning rate")
     parser.add_argument("--clip", type=float, default=0.25, help="gradient clipping")
@@ -214,26 +215,33 @@ if __name__ == "__main__":
     args = parse_args()
     make_reproducible(args.seed)
     device = get_device()
+    print(f'Device: {device}')
     corpus = data.Corpus(args.data)
     # print(corpus.train)
     # print(len(corpus.train))
     # print(len(corpus.vocab.type2index))
-    print(corpus.vocab.type2index['<unk>'])
     
     unk_token_idx = corpus.vocab.type2index['<unk>']
+    print(f'Idx of <unk> token: {unk_token_idx}')
+    
     counts = Counter(corpus.train.detach().cpu().numpy())
     unk_count = counts[unk_token_idx]
     percentage_unk = unk_count/len(corpus.train) * 100
     print(f'% of <unk> tokens: {round(percentage_unk, 4)}')
             
-    # eval_batch_size = 10
+    eval_batch_size = 10
 
-    # test_data = batchify(corpus.test, eval_batch_size)
+    test_data = batchify(corpus.test, eval_batch_size)
 
-    # ntokens = len(corpus.vocab)
-    # model = RNNModel(ntokens, args.emsize, args.nhid, args.nlayers, args.dropout).to(
-    #     device
-    # )
-    # criterion = nn.NLLLoss()
-    # train_model(corpus, args, model, criterion)
-    # test_model(corpus, args, model, criterion)
+    ntokens = len(corpus.vocab)
+    
+    model = RNNModel(ntokens,
+                     args.emsize,
+                     args.nhid,
+                     args.nlayers,
+                     args.bidirectional,
+                     args.dropout).to(device)
+    
+    criterion = nn.NLLLoss()
+    train_model(corpus, args, model, criterion)
+    test_model(corpus, args, model, criterion)

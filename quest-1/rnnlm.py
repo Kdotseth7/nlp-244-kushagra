@@ -10,6 +10,7 @@ class RNNModel(nn.Module):
         in_embedding_dim,
         n_hidden,
         n_layers,
+        bidirectional,
         dropout=0.5,
         rnn_type="elman",  # can be elman, lstm, gru
     ):
@@ -22,6 +23,7 @@ class RNNModel(nn.Module):
                 n_layers,
                 nonlinearity="tanh",
                 dropout=dropout,
+                bidirectional=bidirectional
             )
         else:
             # TODO: implement lstm and gru
