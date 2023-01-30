@@ -9,13 +9,24 @@ import data
 from utils import get_device, repackage_hidden, make_reproducible
 from rnnlm import RNNModel
 
-from collections import Counter
 import math
+from collections import Counter
+from torchtext.vocab import GloVe
 
 
-def init_glove_embeddings(model: RNNModel, glove_path):
-    # TODO: implement this function
-    raise NotImplementedError
+def init_glove_embeddings(model: RNNModel):
+    # Load GloVe Embeddings
+    GLOVE_DIM = 50
+    glove = GloVe(name = '6B', 
+                  dim = GLOVE_DIM)
+
+    print(f'Loaded {len(glove.itos)} words present in GloVe')
+    
+    embeddings_tensor = glove.vectors
+    embeddings_tensor = embeddings_tensor.to(device=get_device())
+    model.in_embedder = nn.Embedding.from_pretrained(embeddings_tensor)
+    model.in_embedder.weight.requires_grad = False
+    return model
 
 
 def compute_perplexity(loss: float):
@@ -140,9 +151,14 @@ def train_model_step(corpus, args, model, criterion, epoch, lr):
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-        for p in model.parameters():
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+        # for p in model.parameters():
+        #     p.data.add_(p.grad, alpha=-lr)
+        params_to_update = [param for param in model.parameters() if param.requires_grad == True]
+        torch.nn.utils.clip_grad_norm_(params_to_update, args.clip)
+        for p in params_to_update:
             p.data.add_(p.grad, alpha=-lr)
+
 
         total_loss += loss.item()
 
@@ -246,6 +262,9 @@ if __name__ == "__main__":
                      args.bidirectional,
                      args.rnn_type,
                      args.dropout).to(device)
+    
+    model = init_glove_embeddings(model)
+    print(model)
     
     criterion = nn.NLLLoss()
     train_model(corpus, args, model, criterion)
