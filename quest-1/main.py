@@ -19,12 +19,13 @@ def init_glove_embeddings(model: RNNModel):
     GLOVE_DIM = 50
     glove = GloVe(name = '6B', 
                   dim = GLOVE_DIM)
-
-    print(f'Loaded {len(glove.itos)} words present in GloVe')
     
+    # Initialize Embedding Layer with Pre-Trained GloVe Embeddings
     embeddings_tensor = glove.vectors
     embeddings_tensor = embeddings_tensor.to(device=get_device())
     model.in_embedder = nn.Embedding.from_pretrained(embeddings_tensor)
+    
+    # Freeze the Embedding Layer
     model.in_embedder.weight.requires_grad = False
     return model
 
@@ -261,9 +262,9 @@ if __name__ == "__main__":
                      args.nlayers,
                      args.bidirectional,
                      args.rnn_type,
-                     args.dropout).to(device)
+                     args.dropout)
     
-    model = init_glove_embeddings(model)
+    model = init_glove_embeddings(model).to(device)
     print(model)
     
     criterion = nn.NLLLoss()
