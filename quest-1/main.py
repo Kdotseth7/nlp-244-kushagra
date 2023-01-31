@@ -4,6 +4,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.onnx
+import torchinfo
 
 import data
 from utils import get_device, repackage_hidden, make_reproducible
@@ -265,6 +266,7 @@ if __name__ == "__main__":
     
     model = init_glove_embeddings(model).to(device)
     print(model)
+    torchinfo.summary(model)
     
     criterion = nn.NLLLoss()
     train_model(corpus, args, model, criterion)
