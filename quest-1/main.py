@@ -9,7 +9,6 @@ import data
 from utils import get_device, repackage_hidden, make_reproducible
 from rnnlm import RNNModel
 
-import math
 from collections import Counter
 from torchtext.vocab import GloVe
 
