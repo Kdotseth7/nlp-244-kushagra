@@ -14,7 +14,7 @@ from collections import Counter
 from torchtext.vocab import GloVe
 
 
-def init_glove_embeddings(model: RNNModel):
+def init_glove_embeddings(model: RNNModel, emb_wt_requires_grad):
     # Load GloVe Embeddings
     GLOVE_DIM = 50
     glove = GloVe(name = '6B', 
@@ -26,7 +26,7 @@ def init_glove_embeddings(model: RNNModel):
     model.in_embedder = nn.Embedding.from_pretrained(embeddings_tensor)
     
     # Freeze the Embedding Layer
-    model.in_embedder.weight.requires_grad = False
+    model.in_embedder.weight.requires_grad = emb_wt_requires_grad
     return model
 
 
@@ -59,6 +59,9 @@ def parse_args():
     parser.add_argument(
         "--batch_size", type=int, default=20, metavar="N", help="batch size"
     )
+    parser.add_argument(
+        "--emb-wt-requires-grad", type=bool, default=False, help="embedding weight requires grad"
+    )
     parser.add_argument("--seq-len", type=int, default=35, help="sequence length")
     parser.add_argument(
         "--dropout",
@@ -67,9 +70,9 @@ def parse_args():
         help="dropout applied to layers (0 = no dropout)",
     )
     parser.add_argument("--seed", type=int, default=1111, help="random seed")
-    # parser.add_argument("--rnn_type", type=str, default="elman", help="rnn type")
-    # parser.add_argument("--rnn_type", type=str, default="gru", help="rnn type")
-    parser.add_argument("--rnn_type", type=str, default="lstm", help="rnn type")
+    # parser.add_argument("--rnn-type", type=str, default="elman", help="rnn type")
+    # parser.add_argument("--rnn-type", type=str, default="gru", help="rnn type")
+    parser.add_argument("--rnn-type", type=str, default="lstm", help="rnn type")
     parser.add_argument(
         "--log-interval", type=int, default=200, metavar="N", help="report interval"
     )
@@ -230,25 +233,28 @@ def test_model(corpus, args, model, criterion):  # Load the best saved model.
         )
     )
     print("=" * 89)
-
+    
+def percent_unk_tokens(corpus):
+    unk_token_idx = corpus.vocab.type2index['<unk>']
+    print(f'Idx of <unk> token: {unk_token_idx}')
+    counts = Counter(corpus.train.detach().cpu().numpy())
+    unk_count = counts[unk_token_idx]
+    percentage_unk = unk_count/len(corpus.train) * 100
+    return round(percentage_unk, 4)
 
 if __name__ == "__main__":
     args = parse_args()
     make_reproducible(args.seed)
     device = get_device()
     print(f'Device: {device}')
+    
     corpus = data.Corpus(args.data)
     # print(corpus.train)
     # print(len(corpus.train))
     # print(len(corpus.vocab.type2index))
     
-    unk_token_idx = corpus.vocab.type2index['<unk>']
-    print(f'Idx of <unk> token: {unk_token_idx}')
-    
-    counts = Counter(corpus.train.detach().cpu().numpy())
-    unk_count = counts[unk_token_idx]
-    percentage_unk = unk_count/len(corpus.train) * 100
-    print(f'% of <unk> tokens: {round(percentage_unk, 4)}')
+    percentage_unk = percent_unk_tokens(corpus)
+    print(f'% of <unk> tokens: {percentage_unk}')
             
     eval_batch_size = 10
 
@@ -264,10 +270,13 @@ if __name__ == "__main__":
                      args.rnn_type,
                      args.dropout)
     
-    model = init_glove_embeddings(model).to(device)
+    model = init_glove_embeddings(model,
+                                  args.emb_wt_requires_grad).to(device)
     print(model)
     torchinfo.summary(model)
     
+    optimizer = torch.optim.Adam(model.parameters(), 
+                                 lr = args.lr)
     criterion = nn.NLLLoss()
     train_model(corpus, args, model, criterion)
     test_model(corpus, args, model, criterion)
