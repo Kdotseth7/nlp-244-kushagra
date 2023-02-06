@@ -43,9 +43,6 @@ class RNNModel(nn.Module):
         )
         else:
             raise NotImplementedError
-        
-        print('RNN Type: ', rnn_type)
-        print('Bi: ', bidirectional)
         self.in_embedder = nn.Embedding(vocab_size, in_embedding_dim)
         self.dropout = nn.Dropout(dropout)
         self.num_directions = 2 if bidirectional else 1
@@ -55,6 +52,7 @@ class RNNModel(nn.Module):
         self.n_layers = n_layers
         self.vocab_size = vocab_size
         self.rnn_type = rnn_type
+        self.in_embedding_dim = in_embedding_dim
 
     def init_weights(self):
         initrange = 0.1
@@ -64,12 +62,7 @@ class RNNModel(nn.Module):
 
     def forward(self, input, hidden):
         emb = self.dropout(self.in_embedder(input))
-        if self.rnn_type == "elman" or self.rnn_type == "gru":
-            output, hidden = self.rnn(emb, hidden)
-        elif self.rnn_type == "lstm":
-            output, (hidden, cell) = self.rnn(emb, (hidden, hidden))
-        else:
-            raise NotImplementedError
+        output, hidden = self.rnn(emb, hidden)
         output = self.dropout(output)
         pooled = self.pooling(output)
         pooled = pooled.view(-1, self.vocab_size)
@@ -77,7 +70,12 @@ class RNNModel(nn.Module):
 
     def init_hidden(self, batch_size):
         weight = next(self.parameters())
-        return weight.new_zeros(self.num_directions * self.n_layers, batch_size, self.n_hidden)
+        if self.rnn_type == "lstm":
+            return (weight.new_zeros(self.num_directions * self.n_layers, batch_size, self.n_hidden), 
+                    weight.new_zeros(self.num_directions * self.n_layers, batch_size, self.n_hidden))
+        else:
+            return weight.new_zeros(self.num_directions * self.n_layers, batch_size, self.n_hidden)
+        
 
     @staticmethod
     def load_model(path):

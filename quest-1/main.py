@@ -14,23 +14,78 @@ from collections import Counter
 from torchtext.vocab import GloVe
 
 
-def init_glove_embeddings(model: RNNModel, emb_wt_requires_grad):
+
+def get_word_embedding(glove, word):
+    """
+    Returns the word embedding for a given word from a pre-trained GloVe model.
+    
+    Parameters:
+    glove (object): A pre-trained GloVe model.
+    word (str): The word for which the embedding is to be retrieved.
+    
+    Returns:
+    torch.tensor: The word embedding for the given word.
+    """
+    return glove.vectors[glove.stoi[word]]
+
+
+def init_glove_embeddings(model: RNNModel, freeze_embed, word2idx):
+    """
+    Initializes the word embeddings for the input layer of a given model using pre-trained GloVe embeddings.
+    
+    Parameters:
+    model (RNNModel): The model for which the input layer embeddings are to be initialized.
+    freeze_embed (bool): A flag to indicate whether to freeze the embedding layer or allow it to be updated during training.
+    word2idx (dict): A dictionary mapping words to their index in the vocabulary.
+    
+    Returns:
+    RNNModel: The input layer of the model, initialized with pre-trained GloVe embeddings.
+    """
     # Load GloVe Embeddings
     GLOVE_DIM = 50
     glove = GloVe(name = '6B', 
                   dim = GLOVE_DIM)
     
+    # Create Embeddings Matrix
+    sos_embed = torch.rand(1, GLOVE_DIM) # Word Embedding for <sos>
+    eos_embed = torch.rand(1, GLOVE_DIM) # Word Embedding for <eos>
+    unk_embed = torch.rand(1, GLOVE_DIM) # Word Embedding for <unk>
+    embeddings = list()
+    for word, _ in word2idx.items():
+        if word in glove.stoi: # If word present in GloVe
+            embeddings.append(get_word_embedding(glove, word))
+        else:
+            if(word == '<sos>'): # If word is <sos>
+                embeddings.append(sos_embed)
+            elif(word == '<eos>'): # If word is <eos>
+                embeddings.append(eos_embed)
+            else: # If word is <unk> or not present in GloVe
+                embeddings.append(unk_embed)
+    temp_list = [emb.detach().cpu().numpy().squeeze().tolist() for emb in embeddings]
+    # Tensor of Word Embeddings for each word in vocab
+    embeddings = torch.tensor(temp_list, device = get_device())
+        
     # Initialize Embedding Layer with Pre-Trained GloVe Embeddings
-    embeddings_tensor = glove.vectors
-    embeddings_tensor = embeddings_tensor.to(device=get_device())
-    model.in_embedder = nn.Embedding.from_pretrained(embeddings_tensor)
+    model.in_embedder = nn.Embedding.from_pretrained(embeddings)
     
     # Freeze the Embedding Layer
-    model.in_embedder.weight.requires_grad = emb_wt_requires_grad
+    if freeze_embed:
+        model.in_embedder.weight.requires_grad = False
+    else:
+        model.in_embedder.weight.requires_grad = True
     return model
 
 
 def compute_perplexity(loss: float):
+    """
+    Compute perplexity of a language model.
+
+    Args:
+    loss (float): The cross-entropy loss calculated by the language model.
+
+    Returns:
+    float: The perplexity of the language model.
+    """
     return math.exp(loss)
 
 
@@ -40,7 +95,6 @@ def parse_args():
         "--data",
         type=str,
         default="./data/wikitext-2-mini",
-        # default="./data/wikitext-2",
         help="location of the data corpus",
     )
 
@@ -50,7 +104,6 @@ def parse_args():
     parser.add_argument(
         "--nhid", type=int, default=200, help="number of hidden units per layer"
     )
-    # parser.add_argument("--bidirectional", type=bool, default=False, help="bi-directional cell")
     parser.add_argument("--bidirectional", type=bool, default=True, help="bi-directional cell")
     parser.add_argument("--nlayers", type=int, default=2, help="number of layers")
     parser.add_argument("--lr", type=float, default=20, help="initial learning rate")
@@ -60,7 +113,13 @@ def parse_args():
         "--batch_size", type=int, default=20, metavar="N", help="batch size"
     )
     parser.add_argument(
-        "--emb-wt-requires-grad", type=bool, default=False, help="embedding weight requires grad"
+        "--freeze_embed", type=bool, default=False, help="freeze embeddings"
+    )
+    parser.add_argument(
+        "--use-adam", type=bool, default=False, help="use adam optimizer"
+    )
+    parser.add_argument(
+        "--use-glove", type=bool, default=False, help="use glove embeddings"
     )
     parser.add_argument("--seq-len", type=int, default=35, help="sequence length")
     parser.add_argument(
@@ -70,9 +129,7 @@ def parse_args():
         help="dropout applied to layers (0 = no dropout)",
     )
     parser.add_argument("--seed", type=int, default=1111, help="random seed")
-    # parser.add_argument("--rnn-type", type=str, default="elman", help="rnn type")
-    # parser.add_argument("--rnn-type", type=str, default="gru", help="rnn type")
-    parser.add_argument("--rnn-type", type=str, default="lstm", help="rnn type")
+    parser.add_argument("--rnn-type", type=str, default="elman", help="rnn type")
     parser.add_argument(
         "--log-interval", type=int, default=200, metavar="N", help="report interval"
     )
@@ -144,25 +201,33 @@ def train_model_step(corpus, args, model, criterion, epoch, lr):
     start_time = time.time()
     ntokens = len(corpus.vocab)
     hidden = model.init_hidden(args.batch_size)
+    if args.use_adam:
+        optimizer =  torch.optim.Adam(model.parameters(), lr = lr)
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.seq_len)):
         data, targets = get_batch(train_data, i)
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        model.zero_grad()
+        if args.use_adam:
+            optimizer.zero_grad()
+        else:
+            model.zero_grad()
         hidden = repackage_hidden(hidden)
         output, hidden = model(data, hidden)
         loss = criterion(output, targets)
         loss.backward()
-
-        # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-        # for p in model.parameters():
-        #     p.data.add_(p.grad, alpha=-lr)
-        params_to_update = [param for param in model.parameters() if param.requires_grad == True]
-        torch.nn.utils.clip_grad_norm_(params_to_update, args.clip)
-        for p in params_to_update:
-            p.data.add_(p.grad, alpha=-lr)
-
+        if args.use_adam:
+            optimizer.step()
+        else:
+            # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+            if args.use_glove:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+                for p in model.parameters():
+                    p.data.add_(p.grad, alpha=-lr)
+            else:
+                params_to_update = [p for p in model.parameters() if p.requires_grad == True]
+                torch.nn.utils.clip_grad_norm_(params_to_update, args.clip)
+                for p in params_to_update:
+                    p.data.add_(p.grad, alpha=-lr)
 
         total_loss += loss.item()
 
@@ -235,8 +300,17 @@ def test_model(corpus, args, model, criterion):  # Load the best saved model.
     print("=" * 89)
     
 def percent_unk_tokens(corpus):
+    """
+    Calculate the percentage of unknown tokens in a corpus.
+
+    Args:
+    corpus (object): The corpus object, containing a vocab and training data.
+
+    Returns:
+    float: The percentage of unknown tokens in the corpus, rounded to 4 decimal places.
+    """
     unk_token_idx = corpus.vocab.type2index['<unk>']
-    print(f'Idx of <unk> token: {unk_token_idx}')
+    print(f'idx of <unk> token: {unk_token_idx}')
     counts = Counter(corpus.train.detach().cpu().numpy())
     unk_count = counts[unk_token_idx]
     percentage_unk = unk_count/len(corpus.train) * 100
@@ -246,13 +320,11 @@ if __name__ == "__main__":
     args = parse_args()
     make_reproducible(args.seed)
     device = get_device()
-    print(f'Device: {device}')
+    print(args)
     
     corpus = data.Corpus(args.data)
-    # print(corpus.train)
-    # print(len(corpus.train))
-    # print(len(corpus.vocab.type2index))
     
+    # Print % of <unk> tokens
     percentage_unk = percent_unk_tokens(corpus)
     print(f'% of <unk> tokens: {percentage_unk}')
             
@@ -268,15 +340,22 @@ if __name__ == "__main__":
                      args.nlayers,
                      args.bidirectional,
                      args.rnn_type,
-                     args.dropout)
+                     args.dropout).to(device)
     
-    model = init_glove_embeddings(model,
-                                  args.emb_wt_requires_grad).to(device)
+    # GloVe Embeddings
+    if args.use_glove:
+        model = init_glove_embeddings(model,
+                                      args.freeze_embed, 
+                                      corpus.vocab.type2index).to(device)
+    
+    # Model Summary
     print(model)
     torchinfo.summary(model)
     
-    optimizer = torch.optim.Adam(model.parameters(), 
-                                 lr = args.lr)
+    # Loss Function
     criterion = nn.NLLLoss()
+    
+    # Mode Train Function 
     train_model(corpus, args, model, criterion)
+    # Mode Evaluate/Test Function 
     test_model(corpus, args, model, criterion)
