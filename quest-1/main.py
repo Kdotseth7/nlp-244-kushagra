@@ -104,16 +104,16 @@ def parse_args():
     parser.add_argument(
         "--nhid", type=int, default=200, help="number of hidden units per layer"
     )
-    parser.add_argument("--bidirectional", type=bool, default=True, help="bi-directional cell")
+    parser.add_argument("--bidirectional", type=bool, default=False, help="bi-directional cell")
     parser.add_argument("--nlayers", type=int, default=2, help="number of layers")
     parser.add_argument("--lr", type=float, default=20, help="initial learning rate")
     parser.add_argument("--clip", type=float, default=0.25, help="gradient clipping")
     parser.add_argument("--epochs", type=int, default=40, help="upper epoch limit")
     parser.add_argument(
-        "--batch_size", type=int, default=20, metavar="N", help="batch size"
+        "--batch-size", type=int, default=20, metavar="N", help="batch size"
     )
     parser.add_argument(
-        "--freeze_embed", type=bool, default=False, help="freeze embeddings"
+        "--freeze-embed", type=bool, default=False, help="freeze embeddings"
     )
     parser.add_argument(
         "--use-adam", type=bool, default=False, help="use adam optimizer"
@@ -220,13 +220,13 @@ def train_model_step(corpus, args, model, criterion, epoch, lr):
         else:
             # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
             if args.use_glove:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-                for p in model.parameters():
-                    p.data.add_(p.grad, alpha=-lr)
-            else:
-                params_to_update = [p for p in model.parameters() if p.requires_grad == True]
+                params_to_update = [p for p in model.parameters() if p.requires_grad]
                 torch.nn.utils.clip_grad_norm_(params_to_update, args.clip)
                 for p in params_to_update:
+                    p.data.add_(p.grad, alpha=-lr)
+            else:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+                for p in model.parameters():
                     p.data.add_(p.grad, alpha=-lr)
 
         total_loss += loss.item()
@@ -319,8 +319,10 @@ def percent_unk_tokens(corpus):
 if __name__ == "__main__":
     args = parse_args()
     make_reproducible(args.seed)
-    device = get_device()
     print(args)
+    
+    # Print Device
+    device = get_device()
     
     corpus = data.Corpus(args.data)
     
@@ -349,7 +351,7 @@ if __name__ == "__main__":
                                       corpus.vocab.type2index).to(device)
     
     # Model Summary
-    print(model)
+    print(f'Model Summary:\n{model}')
     torchinfo.summary(model)
     
     # Loss Function
