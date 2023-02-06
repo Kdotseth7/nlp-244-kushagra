@@ -355,7 +355,7 @@ if __name__ == "__main__":
     # Loss Function
     criterion = nn.NLLLoss()
     
-    # Mode Train Function 
+    # Model Train Function 
     train_model(corpus, args, model, criterion)
-    # Mode Evaluate/Test Function 
+    # Model Evaluate/Test Function 
     test_model(corpus, args, model, criterion)
