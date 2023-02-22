@@ -135,4 +135,4 @@ dmypy.json
 .vector_cache
 
 # Quest-4 Data
-.quest-4/data/
+quest-4/data/
