@@ -1,8 +1,9 @@
 import datasets
 from datasets import DatasetDict, load_dataset
 
+
 def get_data(dataset_name) -> tuple:
-    dataset: DatasetDict = load_dataset(dataset_name)
+    dataset: DatasetDict = load_dataset(dataset_name, cache_dir="./data/cache/huggingface/datasets")
     
     train = dataset["train"]
     train = filter_unlabelled_data(train)

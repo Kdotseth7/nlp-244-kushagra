@@ -1,5 +1,6 @@
 import torch
-import pandas as pd
+import os
+import datasets
 from torch.utils.data import Dataset, DataLoader
 from utils import get_device
 from data import get_data
@@ -12,19 +13,13 @@ from transformers import (T5Config,
 from translate import SNLIDataset
 
 
-def translate(loader: DataLoader, tokenizer: T5Tokenizer, model: T5ForConditionalGeneration) -> list:
+def translate(loader: DataLoader, tokenizer: T5Tokenizer, model: T5ForConditionalGeneration, dataset_type: str) -> list:
     data_dict = dict()
-    premise_translations = []
-    hypothesis_translations = []
-    labels = []
-    pbar = tqdm(loader, desc = 'Translating using T5...', colour = 'green')
+    premise_translations = list()
+    hypothesis_translations = list()
+    labels = list()
+    pbar = tqdm(loader, desc = f"Translating {dataset_type} Dataset using T5...", colour = 'red')
     for premise, hypothesis, label in pbar:
-        # # Generate the translation
-        # outputs = model.generate(inputs)
-        # # Decode the translation
-        # translated_text = tokenizer.decode(outputs[0])
-        # # Remove the "Translate French to English:" prefix and any leading/trailing white space
-        # return translated_text.replace("Translate English to French: ","").strip()
         premise_output_batch = model.generate(premise)
         premise_translations.extend(tokenizer.batch_decode(premise_output_batch, skip_special_tokens=True))
         hypothesis_output_batch = model.generate(hypothesis)
@@ -33,8 +28,8 @@ def translate(loader: DataLoader, tokenizer: T5Tokenizer, model: T5ForConditiona
     data_dict["premise"] = premise_translations
     data_dict["hypothesis"] = hypothesis_translations
     data_dict["label"] = labels
-    df = pd.DataFrame(data_dict)
-    return df
+    dataset = datasets.Dataset.from_dict(data_dict)
+    return dataset
 
 
 def custom_collate_fn(batch) -> tuple:
@@ -57,7 +52,25 @@ if __name__ == "__main__":
     model.to(device)
     
     train_ds = SNLIDataset(train, tokenizer)
-    train_loader = DataLoader(train_ds, batch_size=128, shuffle=False, collate_fn=custom_collate_fn)
+    dev_ds = SNLIDataset(dev, tokenizer)
+    test_ds = SNLIDataset(test, tokenizer)
+    train_loader = DataLoader(train_ds, batch_size=1024, shuffle=False, collate_fn=custom_collate_fn)
+    dev_loader = DataLoader(dev_ds, batch_size=1024, shuffle=False, collate_fn=custom_collate_fn)
+    test_loader = DataLoader(test_ds, batch_size=1024, shuffle=False, collate_fn=custom_collate_fn)
     
-    df = translate(train_loader, tokenizer, model)
-    df.head(5)
+    # Save the dataset to disk
+    dataset_cache_path: str = "./data/fnli"
+    train_path = os.path.join(dataset_cache_path, "train_dataset")
+    dev_path = os.path.join(dataset_cache_path, "dev_dataset")
+    test_path = os.path.join(dataset_cache_path, "test_dataset")
+    if not os.path.exists(dataset_cache_path):
+        train_fnli = translate(train_loader, tokenizer, model, "Train")
+        dev_fnli = translate(dev_loader, tokenizer, model, "Dev")
+        test_fnli = translate(test_loader, tokenizer, model, "Test")
+        train_fnli.save_to_disk(train_path)
+        dev_fnli.save_to_disk(dev_path)
+        test_fnli.save_to_disk(test_path)
+    else:
+        train_fnli = datasets.load_from_disk(train_path)
+        dev_fnli = datasets.load_from_disk(dev_path)
+        test_fnli = datasets.load_from_disk(test_path)
