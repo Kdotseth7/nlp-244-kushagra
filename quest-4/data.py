@@ -1,8 +1,8 @@
 import datasets
 from datasets import DatasetDict, load_dataset
 
-def get_data() -> tuple:
-    dataset: DatasetDict = load_dataset("snli")
+def get_data(dataset_name) -> tuple:
+    dataset: DatasetDict = load_dataset(dataset_name)
     
     train = dataset["train"]
     train = filter_unlabelled_data(train)

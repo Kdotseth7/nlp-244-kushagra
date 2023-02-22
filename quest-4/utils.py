@@ -8,4 +8,5 @@ def get_device():
         device = torch.device("mps")  # For new Mac M1 or M2 chips
     else:
         device = torch.device("cpu")
+    # return device
     return 'cpu'
