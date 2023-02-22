@@ -32,7 +32,7 @@ def translate(loader: DataLoader, tokenizer: T5Tokenizer, model: T5ForConditiona
     return dataset
 
 
-def custom_collate_fn(batch) -> tuple:
+def custom_collate_fn(batch, tokenizer: T5Tokenizer) -> tuple:
     premise_inputs, hypothesis_inputs, labels = zip(*batch)
     premise_input_ids = tokenizer.batch_encode_plus(premise_inputs, padding=True, return_tensors='pt')['input_ids'].to(get_device())
     hypothesis_input_ids = tokenizer.batch_encode_plus(hypothesis_inputs, padding=True, return_tensors='pt')['input_ids'].to(get_device())
@@ -51,12 +51,12 @@ if __name__ == "__main__":
     model = T5ForConditionalGeneration.from_pretrained("t5-small")  
     model.to(device)
     
-    train_ds = SNLIDataset(train, tokenizer)
-    dev_ds = SNLIDataset(dev, tokenizer)
-    test_ds = SNLIDataset(test, tokenizer)
-    train_loader = DataLoader(train_ds, batch_size=1024, shuffle=False, collate_fn=custom_collate_fn)
-    dev_loader = DataLoader(dev_ds, batch_size=1024, shuffle=False, collate_fn=custom_collate_fn)
-    test_loader = DataLoader(test_ds, batch_size=1024, shuffle=False, collate_fn=custom_collate_fn)
+    train_ds = SNLIDataset(train)
+    dev_ds = SNLIDataset(dev)
+    test_ds = SNLIDataset(test)
+    train_loader = DataLoader(train_ds, batch_size=1024, shuffle=False, collate_fn=lambda batch: custom_collate_fn(batch, tokenizer))
+    dev_loader = DataLoader(dev_ds, batch_size=1024, shuffle=False, collate_fn=lambda batch: custom_collate_fn(batch, tokenizer))
+    test_loader = DataLoader(test_ds, batch_size=1024, shuffle=False, collate_fn=lambda batch: custom_collate_fn(batch, tokenizer))
     
     # Save the dataset to disk
     dataset_cache_path: str = "./data/fnli"

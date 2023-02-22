@@ -4,10 +4,8 @@ from utils import get_device
 
 
 class SNLIDataset(Dataset):
-    def __init__(self, examples, tokenizer: T5Tokenizer):
+    def __init__(self, examples):
         self.examples = examples
-        self.tokenizer = tokenizer
-        self.device = get_device()
 
     def __len__(self):
         return len(self.examples)
