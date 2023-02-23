@@ -1,5 +1,23 @@
 import datasets
 from datasets import DatasetDict, load_dataset
+from torch.utils.data import Dataset
+
+
+class SNLIDataset(Dataset):
+    def __init__(self, examples):
+        self.examples = examples
+
+    def __len__(self):
+        return len(self.examples)
+
+    def __getitem__(self, index: int):
+        example = self.examples[index]
+        premise = example['premise']
+        premise_input = f"Translate English to French: {premise}"
+        hypothesis = example['hypothesis']
+        hypothesis_input = f"Translate English to French: {hypothesis}"
+        label = example['label']
+        return premise_input, hypothesis_input, label
 
 
 def get_data(dataset_name) -> tuple:
