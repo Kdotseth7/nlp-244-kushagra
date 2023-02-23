@@ -2,7 +2,7 @@ import torch
 import os
 import datasets
 import optparse
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from utils import get_device
 from data import get_data
 from tqdm import tqdm
@@ -13,11 +13,16 @@ from transformers import (T5Config,
                           Trainer)
 from translate import SNLIDataset
 from functools import partial
+from datasets import DatasetDict, Dataset
 
+
+# Parse Command Line Arguments
 optparser = optparse.OptionParser()
 optparser.add_option("-b", "--batch-size", dest="batch_size", default=1024, type="int", help="Size of each batch")
 optparser.add_option("-n", "--num-workers", dest="num_workers", default=0, type="int", help="Number of workers to use for dataloader")
+optparser.add_option("-u", "--upload", dest="upload", default=False, action="store_true", help="Upload the dataset to HuggingFace")
 (opts, _) = optparser.parse_args()
+
 
 def translate(loader: DataLoader, tokenizer: T5Tokenizer, model: T5ForConditionalGeneration, dataset_type: str) -> list:
     data_dict = dict()
@@ -34,7 +39,7 @@ def translate(loader: DataLoader, tokenizer: T5Tokenizer, model: T5ForConditiona
     data_dict["premise"] = premise_translations
     data_dict["hypothesis"] = hypothesis_translations
     data_dict["label"] = labels
-    dataset = datasets.Dataset.from_dict(data_dict)
+    dataset = Dataset.from_dict(data_dict)
     return dataset
 
 
@@ -90,7 +95,17 @@ if __name__ == "__main__":
         train_fnli = datasets.load_from_disk(train_path)
         dev_fnli = datasets.load_from_disk(dev_path)
         test_fnli = datasets.load_from_disk(test_path)
-        
-    print(train_fnli)
-    print(dev_fnli)
-    print(test_fnli)
+    
+    # API Token for HuggingFace
+    os.environ["HF_API_TOKEN"] = "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"
+    
+    # Create DatasetDict for HuggingFace
+    dataset_dict = DatasetDict({
+        "train": train_fnli, 
+        "dev": dev_fnli, 
+        "test": test_fnli
+    })
+    
+    # Upload the dataset to HuggingFace
+    if opts.upload:
+        dataset_dict.push_to_hub("snli-french", token=os.environ["HF_API_TOKEN"])
