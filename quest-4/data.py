@@ -12,10 +12,11 @@ class SNLIDataset(Dataset):
 
     def __getitem__(self, index: int):
         example = self.examples[index]
+        task_prefix = "Translate English to French:"
         premise = example['premise']
-        premise_input = f"Translate English to French: {premise}"
         hypothesis = example['hypothesis']
-        hypothesis_input = f"Translate English to French: {hypothesis}"
+        premise_input = f"{task_prefix} {premise}"
+        hypothesis_input = f"{task_prefix} {hypothesis}"
         label = example['label']
         return premise_input, hypothesis_input, label
 
