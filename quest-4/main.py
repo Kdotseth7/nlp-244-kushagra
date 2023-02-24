@@ -3,6 +3,7 @@ import os
 import datasets
 import optparse
 import wandb as wandb
+import numpy as np
 from torch.utils.data import DataLoader
 from utils import get_device
 from data import get_data, SNLIDataset
@@ -18,6 +19,7 @@ from transformers import (T5Config,
 from translate import translate
 from functools import partial
 from datasets import DatasetDict
+from sklearn.metrics import f1_score
 
 
 # Parse Command Line Arguments
@@ -37,20 +39,15 @@ def custom_collate_fn(batch, tokenizer: T5Tokenizer) -> tuple:
 
 
 def tokenize(batch, tokenizer: AutoTokenizer):
-    # Tokenize the inputs
-    inputs = tokenizer(batch["premise"], batch["hypothesis"], padding=True, truncation=True, max_length=512, return_tensors="pt")
-
-    # Add the labels to the inputs dictionary
-    inputs["labels"] = torch.tensor(batch["label"])
-
-    return inputs
+    return tokenizer(batch["premise"], batch["hypothesis"], padding=True, truncation=True, max_length=512, return_tensors="pt")
 
 
 def my_compute_metrics(eval_pred: EvalPrediction) -> dict:
     predictions, labels = eval_pred.predictions, eval_pred.label_ids
-    predictions = torch.argmax(predictions, dim=1)
-    acc = (predictions == labels).float().mean()
-    return {"accuracy": acc.item()}
+    predictions = np.argmax(predictions, axis=1)
+    acc = (predictions == labels).astype(float).mean()
+    f1 = f1_score(labels, predictions, average='weighted')
+    return {"accuracy": acc.item(), "f1": f1}
 
 
 if __name__ == "__main__":
@@ -61,60 +58,60 @@ if __name__ == "__main__":
     if opts.num_workers > 0:
         torch.multiprocessing.set_start_method('spawn')
     
-    # # Load Data
-    # train, dev, test = get_data("snli")
+    # Load Data
+    train, dev, test = get_data("snli")
 
-    # # Load Config, Tokenizer, Model for T5
-    # config = T5Config.from_pretrained("t5-small")
-    # tokenizer = T5Tokenizer.from_pretrained("t5-small", model_max_length=512)
-    # model = T5ForConditionalGeneration.from_pretrained("t5-small")  
-    # model.to(device)
+    # Load Config, Tokenizer, Model for T5
+    config = T5Config.from_pretrained("t5-small")
+    tokenizer = T5Tokenizer.from_pretrained("t5-small", model_max_length=512)
+    model = T5ForConditionalGeneration.from_pretrained("t5-small")  
+    model.to(device)
     
-    # # Create Datasets
-    # train_ds = SNLIDataset(train)
-    # dev_ds = SNLIDataset(dev)
-    # test_ds = SNLIDataset(test)
+    # Create Datasets
+    train_ds = SNLIDataset(train)
+    dev_ds = SNLIDataset(dev)
+    test_ds = SNLIDataset(test)
     
-    # # Create Dataloaders
-    # train_loader = DataLoader(train_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
-    # dev_loader = DataLoader(dev_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
-    # test_loader = DataLoader(test_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
+    # Create Dataloaders
+    train_loader = DataLoader(train_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
+    dev_loader = DataLoader(dev_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
+    test_loader = DataLoader(test_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
     
-    # # Save the dataset to disk
-    # dataset_cache_path: str = "./data/fnli"
-    # train_path = os.path.join(dataset_cache_path, "train_dataset")
-    # dev_path = os.path.join(dataset_cache_path, "dev_dataset")
-    # test_path = os.path.join(dataset_cache_path, "test_dataset")
-    # if not os.path.exists(dataset_cache_path):
-    #     # Translate the dataset using T5
-    #     with torch.no_grad():
-    #         train_fnli = translate(train_loader, tokenizer, model, "Train")
-    #         dev_fnli = translate(dev_loader, tokenizer, model, "Dev")
-    #         test_fnli = translate(test_loader, tokenizer, model, "Test")
-    #     train_fnli.save_to_disk(train_path)
-    #     dev_fnli.save_to_disk(dev_path)
-    #     test_fnli.save_to_disk(test_path)
-    # else:
-    #     train_fnli = datasets.load_from_disk(train_path)
-    #     dev_fnli = datasets.load_from_disk(dev_path)
-    #     test_fnli = datasets.load_from_disk(test_path)
+    # Save the dataset to disk
+    dataset_cache_path: str = "./data/fnli"
+    train_path = os.path.join(dataset_cache_path, "train_dataset")
+    dev_path = os.path.join(dataset_cache_path, "dev_dataset")
+    test_path = os.path.join(dataset_cache_path, "test_dataset")
+    if not os.path.exists(dataset_cache_path):
+        # Translate the dataset using T5
+        with torch.no_grad():
+            train_fnli = translate(train_loader, tokenizer, model, "Train")
+            dev_fnli = translate(dev_loader, tokenizer, model, "Dev")
+            test_fnli = translate(test_loader, tokenizer, model, "Test")
+        train_fnli.save_to_disk(train_path)
+        dev_fnli.save_to_disk(dev_path)
+        test_fnli.save_to_disk(test_path)
+    else:
+        train_fnli = datasets.load_from_disk(train_path)
+        dev_fnli = datasets.load_from_disk(dev_path)
+        test_fnli = datasets.load_from_disk(test_path)
     
-    # # API Token for HuggingFace
-    # os.environ["HF_API_TOKEN"] = "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"
+    # API Token for HuggingFace
+    os.environ["HF_API_TOKEN"] = "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"
     
-    # # Create DatasetDict for HuggingFace
-    # dataset_dict = DatasetDict({
-    #     "train": train_fnli, 
-    #     "dev": dev_fnli, 
-    #     "test": test_fnli
-    # })
+    # Create DatasetDict for HuggingFace
+    dataset_dict = DatasetDict({
+        "train": train_fnli, 
+        "dev": dev_fnli, 
+        "test": test_fnli
+    })
     
-    # # Upload the dataset to HuggingFace
-    # if opts.upload:
-    #     dataset_dict.push_to_hub("snli-french", token=os.environ["HF_API_TOKEN"])
+    # Upload the dataset to HuggingFace
+    if opts.upload:
+        dataset_dict.push_to_hub("snli-french", token=os.environ["HF_API_TOKEN"])
         
     # Get the uploaded dataset
-    fnli_dataset: DatasetDict = datasets.load_dataset("kseth919/snli-french")
+    fnli_dataset: DatasetDict = datasets.load_dataset("kseth919/snli-french", cache_dir="./data/cache/huggingface/datasets")
     
     # FNLI Dataset
     train_fnli = fnli_dataset["train"]
@@ -141,19 +138,22 @@ if __name__ == "__main__":
         do_predict=True,
         evaluation_strategy="steps",
         eval_steps=128,
-        per_device_train_batch_size=64,
-        per_device_eval_batch_size=128,
+        per_device_train_batch_size=512,
+        per_device_eval_batch_size=1024,
         save_steps=128,
         save_strategy="steps",
         save_total_limit=5,
         report_to=["wandb"],
         logging_steps=50,
-        num_train_epochs=20,
+        num_train_epochs=3,
         metric_for_best_model="accuracy",
         load_best_model_at_end=True,
-        dataloader_num_workers=0,  # set to 0 when debugging and >1 when running!
+        dataloader_num_workers=8,  # set to 0 when debugging and >1 when running!
     )
     
+    # API Token for WANDB
+    os.environ["WANDB_API_TOKEN"] = "c5c4a689c34310341a891f54e7b875dca6da6e42"
+    wandb.login(key=os.environ["WANDB_API_TOKEN"])
     wandb.init(entity="kushagraseth-1996", project="nlp244", group="finetune_w_trainer")
     
     # Create TrainingArguments    
@@ -167,6 +167,7 @@ if __name__ == "__main__":
         compute_metrics=my_compute_metrics,
     )
     
+    # Train the model
     trainer.train()
     model = trainer.model # make sure to load_best_model_at_end=True!
     
