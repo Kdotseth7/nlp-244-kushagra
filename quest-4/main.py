@@ -36,9 +36,14 @@ def custom_collate_fn(batch, tokenizer: T5Tokenizer) -> tuple:
     return premise_input_ids, hypothesis_input_ids, labels
 
 
-# Tokenize the inputs
 def tokenize(batch, tokenizer: AutoTokenizer):
-    return tokenizer(batch['premise'], batch['hypothesis'], padding=True, truncation=True, max_length=512, return_tensors='pt')
+    # Tokenize the inputs
+    inputs = tokenizer(batch["premise"], batch["hypothesis"], padding=True, truncation=True, max_length=512, return_tensors="pt")
+
+    # Add the labels to the inputs dictionary
+    inputs["labels"] = torch.tensor(batch["label"])
+
+    return inputs
 
 
 def my_compute_metrics(eval_pred: EvalPrediction) -> dict:
@@ -56,62 +61,65 @@ if __name__ == "__main__":
     if opts.num_workers > 0:
         torch.multiprocessing.set_start_method('spawn')
     
-    # Load Data
-    train, dev, test = get_data("snli")
+    # # Load Data
+    # train, dev, test = get_data("snli")
 
-    # Load Config, Tokenizer, Model for T5
-    config = T5Config.from_pretrained("t5-small")
-    tokenizer = T5Tokenizer.from_pretrained("t5-small", model_max_length=512)
-    model = T5ForConditionalGeneration.from_pretrained("t5-small")  
-    model.to(device)
+    # # Load Config, Tokenizer, Model for T5
+    # config = T5Config.from_pretrained("t5-small")
+    # tokenizer = T5Tokenizer.from_pretrained("t5-small", model_max_length=512)
+    # model = T5ForConditionalGeneration.from_pretrained("t5-small")  
+    # model.to(device)
     
-    # Create Datasets
-    train_ds = SNLIDataset(train)
-    dev_ds = SNLIDataset(dev)
-    test_ds = SNLIDataset(test)
+    # # Create Datasets
+    # train_ds = SNLIDataset(train)
+    # dev_ds = SNLIDataset(dev)
+    # test_ds = SNLIDataset(test)
     
-    # Create Dataloaders
-    train_loader = DataLoader(train_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
-    dev_loader = DataLoader(dev_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
-    test_loader = DataLoader(test_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
+    # # Create Dataloaders
+    # train_loader = DataLoader(train_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
+    # dev_loader = DataLoader(dev_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
+    # test_loader = DataLoader(test_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
     
-    # Save the dataset to disk
-    dataset_cache_path: str = "./data/fnli"
-    train_path = os.path.join(dataset_cache_path, "train_dataset")
-    dev_path = os.path.join(dataset_cache_path, "dev_dataset")
-    test_path = os.path.join(dataset_cache_path, "test_dataset")
-    if not os.path.exists(dataset_cache_path):
-        # Translate the dataset using T5
-        with torch.no_grad():
-            train_fnli = translate(train_loader, tokenizer, model, "Train")
-            dev_fnli = translate(dev_loader, tokenizer, model, "Dev")
-            test_fnli = translate(test_loader, tokenizer, model, "Test")
-        train_fnli.save_to_disk(train_path)
-        dev_fnli.save_to_disk(dev_path)
-        test_fnli.save_to_disk(test_path)
-    else:
-        train_fnli = datasets.load_from_disk(train_path)
-        dev_fnli = datasets.load_from_disk(dev_path)
-        test_fnli = datasets.load_from_disk(test_path)
+    # # Save the dataset to disk
+    # dataset_cache_path: str = "./data/fnli"
+    # train_path = os.path.join(dataset_cache_path, "train_dataset")
+    # dev_path = os.path.join(dataset_cache_path, "dev_dataset")
+    # test_path = os.path.join(dataset_cache_path, "test_dataset")
+    # if not os.path.exists(dataset_cache_path):
+    #     # Translate the dataset using T5
+    #     with torch.no_grad():
+    #         train_fnli = translate(train_loader, tokenizer, model, "Train")
+    #         dev_fnli = translate(dev_loader, tokenizer, model, "Dev")
+    #         test_fnli = translate(test_loader, tokenizer, model, "Test")
+    #     train_fnli.save_to_disk(train_path)
+    #     dev_fnli.save_to_disk(dev_path)
+    #     test_fnli.save_to_disk(test_path)
+    # else:
+    #     train_fnli = datasets.load_from_disk(train_path)
+    #     dev_fnli = datasets.load_from_disk(dev_path)
+    #     test_fnli = datasets.load_from_disk(test_path)
     
-    # API Token for HuggingFace
-    os.environ["HF_API_TOKEN"] = "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"
+    # # API Token for HuggingFace
+    # os.environ["HF_API_TOKEN"] = "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"
     
-    # Create DatasetDict for HuggingFace
-    dataset_dict = DatasetDict({
-        "train": train_fnli, 
-        "dev": dev_fnli, 
-        "test": test_fnli
-    })
+    # # Create DatasetDict for HuggingFace
+    # dataset_dict = DatasetDict({
+    #     "train": train_fnli, 
+    #     "dev": dev_fnli, 
+    #     "test": test_fnli
+    # })
     
-    # Upload the dataset to HuggingFace
-    if opts.upload:
-        dataset_dict.push_to_hub("snli-french", token=os.environ["HF_API_TOKEN"])
+    # # Upload the dataset to HuggingFace
+    # if opts.upload:
+    #     dataset_dict.push_to_hub("snli-french", token=os.environ["HF_API_TOKEN"])
+        
+    # Get the uploaded dataset
+    fnli_dataset: DatasetDict = datasets.load_dataset("kseth919/snli-french")
     
     # FNLI Dataset
-    train_fnli = dataset_dict["train"]
-    dev_fnli = dataset_dict["dev"]
-    test_fnli = dataset_dict["test"]
+    train_fnli = fnli_dataset["train"]
+    dev_fnli = fnli_dataset["dev"]
+    test_fnli = fnli_dataset["test"]
         
     # Load the Config, Tokenizer, and Model for CamemBERT
     cb_config = AutoConfig.from_pretrained('cmarkea/distilcamembert-base')   
@@ -121,9 +129,9 @@ if __name__ == "__main__":
     
     BATCH_SIZE = 128
     
-    train_fnli = train_fnli.map(cb_tokenizer, batched=True, batch_size=BATCH_SIZE)
-    dev_fnli = dev_fnli.map(cb_tokenizer, batched=True, batch_size=BATCH_SIZE)
-    test_fnli = test_fnli.map(cb_tokenizer, batched=True, batch_size=BATCH_SIZE)
+    train_fnli = train_fnli.map(partial(tokenize, tokenizer=cb_tokenizer), batched=True, batch_size=BATCH_SIZE)
+    dev_fnli = dev_fnli.map(partial(tokenize, tokenizer=cb_tokenizer), batched=True, batch_size=BATCH_SIZE)
+    test_fnli = test_fnli.map(partial(tokenize, tokenizer=cb_tokenizer), batched=True, batch_size=BATCH_SIZE)
     
     # Let's fine-tune with the Trainer API!
     training_args: TrainingArguments = TrainingArguments(

@@ -136,3 +136,6 @@ dmypy.json
 
 # Quest-4 Data
 quest-4/data/
+
+# Wandb
+wandb
