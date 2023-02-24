@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 
 class SNLIDataset(Dataset):
-    """Dataset for SNLI dataset."""
+    """Create Dataset for SNLI dataset with Task Prefix."""
     def __init__(self, examples):
         self.examples = examples
 

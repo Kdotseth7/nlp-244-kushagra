@@ -5,7 +5,7 @@ import optparse
 import wandb as wandb
 import numpy as np
 from torch.utils.data import DataLoader
-from utils import get_device
+from utils import get_device, make_reproducible
 from data import get_data, SNLIDataset
 from transformers import (T5Config, 
                           T5Tokenizer, 
@@ -24,8 +24,10 @@ from sklearn.metrics import f1_score
 
 # Parse Command Line Arguments
 optparser = optparse.OptionParser()
-optparser.add_option("-b", "--batch-size", dest="batch_size", default=1024, type="int", help="Size of each batch")
+optparser.add_option("-b", "--batch-size", dest="batch_size", default=1024, type="int", help="Size of each batch for DataLoader of T5 model")
 optparser.add_option("-n", "--num-workers", dest="num_workers", default=0, type="int", help="Number of workers to use for dataloader")
+optparser.add_option("-s", "--seed", dest="seed", default=123, type="int", help="Random seed value to make results reproduible")
+optparser.add_option("-e", "--epochs", dest="epochs", default=5, type="int", help="Number of epochs to train the model")
 optparser.add_option("-u", "--upload", dest="upload", default=False, action="store_true", help="Upload the dataset to HuggingFace")
 (opts, _) = optparser.parse_args()
 
@@ -56,6 +58,9 @@ def my_compute_metrics(eval_pred: EvalPrediction) -> dict:
 if __name__ == "__main__":
     # Set Device
     device = get_device()
+    
+    # Set Seed
+    make_reproducible(opts.seed)
     
     # Set Multiprocessing
     if opts.num_workers > 0:
@@ -148,10 +153,10 @@ if __name__ == "__main__":
         save_total_limit=5,
         report_to=["wandb"],
         logging_steps=50,
-        num_train_epochs=3,
+        num_train_epochs=opts.epochs,
         metric_for_best_model="accuracy",
         load_best_model_at_end=True,
-        dataloader_num_workers=8,  # set to 0 when debugging and >1 when running!
+        dataloader_num_workers=opts.num_workers  # Set to 0 when debugging and > 1 when running!
     )
     
     # Connect to WandB and initialize the run
