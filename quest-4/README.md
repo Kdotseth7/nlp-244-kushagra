@@ -27,3 +27,9 @@ here,
 ```bash
 https://wandb.ai/kushagraseth-1996/nlp244/groups/finetune_w_trainer?workspace=user-kushagraseth-1996
 ```
+
+## Translated French SNLI Dataset on HuggingFace Hub
+
+```bash
+https://huggingface.co/datasets/kseth919/snli-french/viewer/kseth919--snli-french
+```
