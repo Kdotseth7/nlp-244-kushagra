@@ -31,6 +31,7 @@ optparser.add_option("-u", "--upload", dest="upload", default=False, action="sto
 
 
 def custom_collate_fn(batch, tokenizer: T5Tokenizer) -> tuple:
+    """Custom collate function for DataLoader to tokenize the batch for T5 model."""
     premise_inputs, hypothesis_inputs, labels = zip(*batch)
     premise_input_ids = tokenizer.batch_encode_plus(premise_inputs, max_length=512, padding=True, truncation=True, return_tensors='pt')['input_ids'].to(get_device())
     hypothesis_input_ids = tokenizer.batch_encode_plus(hypothesis_inputs, max_length=512, padding=True, truncation=True, return_tensors='pt')['input_ids'].to(get_device())
@@ -39,10 +40,12 @@ def custom_collate_fn(batch, tokenizer: T5Tokenizer) -> tuple:
 
 
 def tokenize(batch, tokenizer: AutoTokenizer):
+    """Tokenizes the batch for fine-tuning the model."""
     return tokenizer(batch["premise"], batch["hypothesis"], padding=True, truncation=True, max_length=512, return_tensors="pt")
 
 
 def my_compute_metrics(eval_pred: EvalPrediction) -> dict:
+    """Computes the metrics Accuracy and F1 Score."""
     predictions, labels = eval_pred.predictions, eval_pred.label_ids
     predictions = np.argmax(predictions, axis=1)
     acc = (predictions == labels).astype(float).mean()
@@ -72,7 +75,7 @@ if __name__ == "__main__":
     dev_ds = SNLIDataset(dev)
     test_ds = SNLIDataset(test)
     
-    # Create Dataloaders
+    # Create Dataloaders for T5
     train_loader = DataLoader(train_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
     dev_loader = DataLoader(dev_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
     test_loader = DataLoader(test_ds, batch_size=opts.batch_size, num_workers=opts.num_workers, shuffle=False, collate_fn=partial(custom_collate_fn, tokenizer=tokenizer))
@@ -130,7 +133,7 @@ if __name__ == "__main__":
     dev_fnli = dev_fnli.map(partial(tokenize, tokenizer=cb_tokenizer), batched=True, batch_size=BATCH_SIZE)
     test_fnli = test_fnli.map(partial(tokenize, tokenizer=cb_tokenizer), batched=True, batch_size=BATCH_SIZE)
     
-    # Let's fine-tune with the Trainer API!
+    # Create TrainingArguments for Trainer API
     training_args: TrainingArguments = TrainingArguments(
         output_dir="./data/models",
         do_train=True,
@@ -151,12 +154,12 @@ if __name__ == "__main__":
         dataloader_num_workers=8,  # set to 0 when debugging and >1 when running!
     )
     
-    # API Token for WANDB
+    # Connect to WandB and initialize the run
     os.environ["WANDB_API_TOKEN"] = "c5c4a689c34310341a891f54e7b875dca6da6e42"
     wandb.login(key=os.environ["WANDB_API_TOKEN"])
     wandb.init(entity="kushagraseth-1996", project="nlp244", group="finetune_w_trainer")
     
-    # Create TrainingArguments    
+    # Fine-tune with the Trainer API
     trainer: Trainer = Trainer(
         model=cb_model,
         args=training_args,
@@ -171,5 +174,5 @@ if __name__ == "__main__":
     trainer.train()
     model = trainer.model # make sure to load_best_model_at_end=True!
     
-    # Run a final evaluation on the test set
+    # Test the model
     trainer.evaluate(metric_key_prefix="test", eval_dataset=test_fnli)
