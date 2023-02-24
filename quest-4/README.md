@@ -21,3 +21,9 @@ here,
 - n = number of workers to use for dataloader
 - e = number of epochs to train the model
 - u = upload the dataset to HuggingFace
+
+## Weights & Biases URL
+
+```bash
+https://wandb.ai/kushagraseth-1996/nlp244/groups/finetune_w_trainer?workspace=user-kushagraseth-1996
+```
