@@ -1,8 +1,9 @@
 from tqdm import tqdm
 import torch
 
-# Model Evaluate Function
+
 def evaluate(loader, model, loss_fn, score_fn) -> tuple[float, float]:
+    """Evaluate the model on batches from the loader and return the loss and score for the epoch."""
     model.eval()
     losses = list()
     pbar = tqdm(loader, desc = "Evaluation...", colour = "green")
