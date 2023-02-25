@@ -2,7 +2,7 @@ from tqdm import tqdm
 import torch
 
 # Model Evaluate Function
-def evaluate(loader, model, loss_fn, score_fn) -> (float, float):
+def evaluate(loader, model, loss_fn, score_fn) -> tuple[float, float]:
     model.eval()
     losses = list()
     pbar = tqdm(loader, desc = "Evaluation...", colour = "green")
