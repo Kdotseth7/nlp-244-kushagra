@@ -13,14 +13,14 @@ from train import train
 from evaluate import evaluate
 
 argument_parser = argparse.ArgumentParser()
-argument_parser.add_argument("--epochs", dest = "EPOCHS", type = int, default = 2)
+argument_parser.add_argument("--epochs", dest = "EPOCHS", type = int, default = 5)
 argument_parser.add_argument("--seed", dest = "SEED", type = int, default = 42)
 argument_parser.add_argument("--batch_size", dest = "BATCH_SIZE", type = int, default = 128)
 argument_parser.add_argument("--embed_dim", dest = "EMBED_DIM", type = int, default = 100)
 argument_parser.add_argument("--hidden_dim", dest = "HIDDEN_DIM", type = int, default = 256)
 argument_parser.add_argument("--num_layers", dest = "NUM_LAYERS", type = int, default = 2)
 argument_parser.add_argument("--bidirectional", dest = "BIDIRECTIONAL", type = bool, default = False)
-argument_parser.add_argument("--optimizer", dest = "OPTIMIZER", type = str, default = 'AdamW')
+argument_parser.add_argument("--optimizer", dest = "OPTIMIZER", type = str, default = 'Adam')
 argument_parser.add_argument("--loss_fn", dest = "LOSS_FN", type = str, default = 'BCELoss')
 argument_parser.add_argument("--score_fn", dest = "SCORE_FN", type = str, default = 'F1_Score')
 argument_parser.add_argument("--learning_rate", dest = "LEARNING_RATE", type = float, default =  1e-3)
@@ -45,9 +45,9 @@ if __name__ == "__main__":
     # Calculate the percentage of clickbait headlines
     data = get_data()
     
-    clickbait_percentage = (data[data['label'] == 1]['label'].count() / len(data)) * 100
+    clickbait_percentage = (data[data["label"] == 1]["label"].count() / len(data)) * 100
     # Print the percentage of clickbait headlines
-    print(f"Percentage of clickbait headlines: {clickbait_percentage:.2f}%")
+    print(f"FLAG --> %age of clickbait headlines: {clickbait_percentage:.2f}%")
     
     train_data, dev_data = train_test_split(data, test_size=0.3, random_state=args.SEED)
     dev_data, test_data = train_test_split(dev_data, test_size=0.5, random_state=args.SEED)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         labels_tensor = torch.tensor(labels, device = device)
 
         lengths = [len(text) for text in texts]
-        lengths = torch.tensor(lengths, device = 'cpu') # Lengths need to be on CPU
+        lengths = torch.tensor(lengths, device = "cpu") # Lengths need to be on CPU
         
         texts_padded = pad_sequence(texts_tensor, batch_first = True, padding_value = vocab.word2idx['<pad>'])
         
@@ -81,21 +81,21 @@ if __name__ == "__main__":
     model = LSTM(INPUT_DIM, args.EMBED_DIM, args.HIDDEN_DIM, OUTPUT_DIM, args.NUM_LAYERS, args.BIDIRECTIONAL, args.DROPOUT).to(device)
     
     # Optimizer
-    if args.OPTIMIZER == 'AdamW':
-        optimizer = torch.optim.AdamW(model.parameters(), lr = args.LEARNING_RATE)
+    if args.OPTIMIZER == "Adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr = args.LEARNING_RATE)
 
     # Loss Function
-    if args.LOSS_FN == 'BCELoss':
+    if args.LOSS_FN == "BCELoss":
         loss_fn = nn.BCEWithLogitsLoss().to(device)
 
     # Initialize Best Validation Loss
-    best_dev_loss = float('inf')
+    best_dev_loss = float("inf")
         
     # Path to Save Best Model
-    PATH = f'lstm-best-model.pt'
+    PATH = f"lstm-best-model.pt"
 
     # Score Function
-    if args.SCORE_FN == 'F1_Score':
+    if args.SCORE_FN == "F1_Score":
         score_fn = f1_score
 
     for epoch in range(args.EPOCHS):
@@ -112,17 +112,17 @@ if __name__ == "__main__":
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
 
         # Print Epoch Results Summary
-        print(f'\n\tEpoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-        print(f'\tTrain Loss: {train_loss:.3f}')
-        print(f'\tValidation Loss: {dev_loss:.3f} | F1_Score: {dev_f1*100:.2f}%\n')
+        print(f"\n\tEpoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s")
+        print(f"\tTrain Loss: {train_loss:.3f}")
+        print(f"\tValidation Loss: {dev_loss:.3f} | F1_Score: {dev_f1*100:.2f}%\n")
 
         if dev_loss < best_dev_loss:
             best_valid_loss = dev_loss
             torch.save(model.state_dict(), PATH)
             
     # Evaluation on test set
-    model.load_state_dict(torch.load('lstm-best-model.pt'))
+    model.load_state_dict(torch.load("lstm-best-model.pt"))
     model.eval()
     with torch.no_grad():
         test_loss, test_f1 = evaluate(test_loader, model, loss_fn, score_fn)
-    print(f'Test Loss: {test_loss:.3f} | Test F1 Score: {test_f1:.3f}')
+    print(f"FLAG --> Test Loss: {test_loss:.3f} | Test F1 Score: {test_f1:.3f}")

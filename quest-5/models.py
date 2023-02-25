@@ -10,8 +10,10 @@ class LSTM(nn.Module):
                  output_dim, 
                  n_layers, 
                  bidirectional, 
-                 dropout):
+                 dropout) -> None:
         super(LSTM, self).__init__()
+        # Bidirectional LSTM or not
+        self.bidirectional = bidirectional
         # Initialize Embedding Layer
         self.embedding = nn.Embedding(input_dim, embedding_dim)
         # Initialzie LSTM layer to process the vector sequences 
@@ -21,7 +23,7 @@ class LSTM(nn.Module):
                             bidirectional = bidirectional,
                             dropout = dropout,
                             batch_first = True)
-        num_directions = 2 if bidirectional else 1
+        num_directions = 2 if self.bidirectional else 1
         # Initialize Dense layer to predict
         self.fc = nn.Linear(hidden_dim * num_directions, output_dim)
         # Initialize dropout to improve with regularization
@@ -29,7 +31,7 @@ class LSTM(nn.Module):
 
     def forward(self, 
                 x, 
-                x_lengths):
+                x_lengths) -> torch.Tensor:
         # Embedding Layer
         embedded = self.embedding(x)
         # Dropout Layer before LSTM Layer

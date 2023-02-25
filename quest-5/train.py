@@ -2,13 +2,10 @@ from tqdm import tqdm
 
 
 # Model Train Function
-def train(loader, 
-          model, 
-          optimizer, 
-          loss_fn):
+def train(loader, model, optimizer, loss_fn) -> float:
     model.train()
     losses = list()
-    pbar = tqdm(loader, desc = 'Training...', colour = 'red')
+    pbar = tqdm(loader, desc = "Training...", colour = 'red')
     for x, y, x_lengths in pbar:
         optimizer.zero_grad()
         
@@ -16,7 +13,7 @@ def train(loader,
         y_pred = model(x, x_lengths)
         
         loss = loss_fn(y_pred, y.float())
-        pbar.set_postfix({'Loss': loss.item()})
+        pbar.set_postfix({"Loss": loss.item()})
         losses.append(loss.item())
         
         # Calculate gradients for w/b

@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 
-def get_device():
+def get_device() -> torch.device:
     """Returns the device to be used for model training."""
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -12,7 +12,6 @@ def get_device():
         device = torch.device("mps")  # For new Mac M1 or M2 chips
     else:
         device = torch.device("cpu")
-    # return 'cpu'
     return device
 
 

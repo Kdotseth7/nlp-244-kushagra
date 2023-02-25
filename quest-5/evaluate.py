@@ -2,20 +2,17 @@ from tqdm import tqdm
 import torch
 
 # Model Evaluate Function
-def evaluate(loader, 
-             model, 
-             loss_fn, 
-             score_fn):
+def evaluate(loader, model, loss_fn, score_fn) -> (float, float):
     model.eval()
     losses = list()
-    pbar = tqdm(loader, desc = 'Evaluation...', colour = 'green')
+    pbar = tqdm(loader, desc = "Evaluation...", colour = "green")
     for x, y, x_lengths in pbar:
 
         # Calculate y_pred
         y_pred = model(x, x_lengths)
         
         loss = loss_fn(y_pred, y.float())
-        pbar.set_postfix({'Loss': loss.item()})
+        pbar.set_postfix({"Loss": loss.item()})
         losses.append(loss.item())
         
         y = y.detach().cpu().numpy()
