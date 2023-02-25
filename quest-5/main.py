@@ -29,6 +29,7 @@ args, _ = argument_parser.parse_known_args()
 
 
 def epoch_time(start_time, end_time):
+    """Calculate the time taken for an epoch."""
     elapsed_time = end_time - start_time
     elapsed_mins = int(elapsed_time / 60)
     elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
@@ -62,6 +63,7 @@ if __name__ == "__main__":
     test_ds = ClickbaitDataset(test_data, vocab)
     
     def custom_collate_fn(batch):
+        """Custom collate function to pad the sequences to the maximum length in the batch."""
         texts, labels = zip(*batch)
         
         texts_tensor = [torch.tensor(text, device = device) for text in texts]

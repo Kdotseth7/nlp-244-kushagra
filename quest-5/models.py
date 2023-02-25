@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class LSTM(nn.Module):
-
+    """LSTM Model Class"""
     def __init__(self, 
                  input_dim, 
                  embedding_dim, 

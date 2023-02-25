@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 
 
 def get_data() -> pd.DataFrame:
+    """Merges clickbait and non-clickbait dataframes and returns a dataframe."""
     # Read clickbait headlines
     with gzip.open("dataset/clickbait_data.gz", "rb") as f:
         clickbait_df = pd.read_csv(f, sep="\t", header=None, names=["headline"])
@@ -21,6 +22,7 @@ def get_data() -> pd.DataFrame:
     return data
 
 class Vocabulary:
+    """Class to create a vocabulary from the training data."""
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
         self.tokenized_df = self.tokenize()
@@ -43,6 +45,7 @@ class Vocabulary:
     
     
 class ClickbaitDataset(Dataset):
+    """Class to create a dataset from the dataframe using the vocabulary."""
     def __init__(self, df: pd.DataFrame, vocab: Vocabulary) -> None:
         self.df = df
         self.vocab = vocab
