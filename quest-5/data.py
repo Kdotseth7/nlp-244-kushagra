@@ -29,7 +29,7 @@ class Vocabulary:
         self.unique_words = self.load_unique_words()
         self.word2idx = {word:idx for idx, word in enumerate(self.unique_words)}
         self.word2idx['<pad>'] = len(self.word2idx)
-        self.word2idx['<unk>'] = len(self.word2idx) + 1
+        self.word2idx['<unk>'] = len(self.word2idx)
         self.idx2word = {idx:word for word, idx in self.word2idx.items()}
 
     def load_unique_words(self) -> list:

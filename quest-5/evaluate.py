@@ -1,5 +1,5 @@
 from tqdm import tqdm
-
+import torch
 
 # Model Evaluate Function
 def evaluate(loader, 
@@ -12,12 +12,15 @@ def evaluate(loader,
     for x, y, x_lengths in pbar:
 
         # Calculate y_pred
-        y_pred = model(x, x_lengths).squeeze(1)
+        y_pred = model(x, x_lengths)
         
         loss = loss_fn(y_pred, y.float())
         pbar.set_postfix({'Loss': loss.item()})
         losses.append(loss.item())
-
-        score = score_fn(y.detach().cpu().numpy(), y_pred.detach().cpu().numpy())
+        
+        y = y.detach().cpu().numpy()
+        y_pred = torch.round(torch.sigmoid(y_pred))
+        y_pred = y_pred.detach().cpu().numpy()
+        score = score_fn(y, y_pred)
               
     return sum(losses) / len(losses), score

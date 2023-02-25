@@ -13,7 +13,7 @@ def train(loader,
         optimizer.zero_grad()
         
         # Calculate y_pred
-        y_pred = model(x, x_lengths).squeeze(1)
+        y_pred = model(x, x_lengths)
         
         loss = loss_fn(y_pred, y.float())
         pbar.set_postfix({'Loss': loss.item()})

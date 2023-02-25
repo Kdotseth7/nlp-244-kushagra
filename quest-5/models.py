@@ -20,7 +20,7 @@ class LSTM(nn.Module):
                             num_layers = n_layers,
                             bidirectional = bidirectional,
                             dropout = dropout,
-                            batch_first = False)
+                            batch_first = True)
         num_directions = 2 if bidirectional else 1
         # Initialize Dense layer to predict
         self.fc = nn.Linear(hidden_dim * num_directions, output_dim)
@@ -37,7 +37,7 @@ class LSTM(nn.Module):
         # Packed Sequence
         packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, 
                                                             x_lengths, 
-                                                            batch_first = False, 
+                                                            batch_first = True, 
                                                             enforce_sorted = False)
         # LSTM Layer
         packed_output, (hidden, cell) = self.lstm(packed_embedded)
@@ -45,7 +45,7 @@ class LSTM(nn.Module):
         output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, 
                                                                   batch_first = False)
         # Concat the final forward (hidden[-2,:,:]) and backward (hidden[-1,:,:]) hidden layers and Apply Dropout
-        hidden = self.dropout(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1))
+        hidden = self.dropout(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1)) if self.lstm.bidirectional else self.dropout(hidden[-1,:,:])
         # Fully Connected Layer
         output = self.fc(hidden)
-        return output
+        return output.squeeze(1)
