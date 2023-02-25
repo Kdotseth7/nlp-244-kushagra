@@ -18,6 +18,6 @@ def evaluate(loader,
         pbar.set_postfix({'Loss': loss.item()})
         losses.append(loss.item())
 
-        score = score_fn(y, y_pred)
+        score = score_fn(y.detach().cpu().numpy(), y_pred.detach().cpu().numpy())
               
     return sum(losses) / len(losses), score
