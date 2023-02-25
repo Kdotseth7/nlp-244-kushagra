@@ -22,7 +22,7 @@ argument_parser.add_argument("--num-layers", dest = "NUM_LAYERS", type = int, de
 argument_parser.add_argument("--bidirectional", dest = "BIDIRECTIONAL", type = bool, default = False)
 argument_parser.add_argument("--optimizer", dest = "OPTIMIZER", type = str, default = 'Adam')
 argument_parser.add_argument("--loss-fn", dest = "LOSS_FN", type = str, default = 'BCELoss')
-argument_parser.add_argument("--score_-n", dest = "SCORE_FN", type = str, default = 'F1_Score')
+argument_parser.add_argument("--score-fn", dest = "SCORE_FN", type = str, default = 'F1_Score')
 argument_parser.add_argument("--learning-rate", dest = "LEARNING_RATE", type = float, default =  1e-3)
 argument_parser.add_argument("--dropout", dest = "DROPOUT", type = float, default =  0.2)
 argument_parser.add_argument("--heads", dest = "HEADS", type = int, default =  4)
@@ -105,7 +105,10 @@ if __name__ == "__main__":
     best_dev_loss = float("inf")
         
     # Path to Save Best Model
-    PATH = f"lstm-best-model.pt"
+    if args.MODEL == "LSTM":
+        PATH = f"lstm_best_model.pt"
+    elif args.MODEL == "LSTM_With_Attention":
+        PATH = f"lstm_with_attention_best_model.pt"
 
     # Score Function
     if args.SCORE_FN == "F1_Score":
@@ -135,7 +138,7 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), PATH)
             
     # Evaluation on Test Set
-    model.load_state_dict(torch.load("lstm-best-model.pt"))
+    model.load_state_dict(torch.load(PATH))
     model.eval()
     with torch.no_grad():
         test_loss, test_f1 = evaluate(test_loader, model, loss_fn, score_fn)
