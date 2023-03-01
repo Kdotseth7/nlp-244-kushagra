@@ -50,7 +50,7 @@ if __name__ == "__main__":
     
     # Calculate and Print the percentage of clickbait headlines
     clickbait_percentage = (data[data["label"] == 1]["label"].count() / len(data)) * 100
-    print(f"FLAG --> %age of clickbait headlines: {clickbait_percentage:.2f}%")
+    print(f"FLAG --> %age of clickbait headlines: {clickbait_percentage:.4f}%")
     
     # Split the data into Train, Dev and Test Sets
     train_data, dev_data = train_test_split(data, test_size=0.3, random_state=args.SEED)
