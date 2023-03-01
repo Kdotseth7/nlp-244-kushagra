@@ -12,6 +12,7 @@ from models import LSTM, LSTM_With_Attention
 from train import train
 from evaluate import evaluate
 
+
 argument_parser = argparse.ArgumentParser()
 argument_parser.add_argument("--epochs", dest = "EPOCHS", type = int, default = 5)
 argument_parser.add_argument("--seed", dest = "SEED", type = int, default = 42)
@@ -131,7 +132,7 @@ if __name__ == "__main__":
         # Print Epoch Results Summary
         print(f"\n\tEpoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s")
         print(f"\tTrain Loss: {train_loss:.3f}, Train Acc: {train_acc:.3f}")
-        print(f"\tValidation Loss: {dev_loss:.3f} | F1_Score: {dev_f1:.3f}\n")
+        print(f"\tValidation Loss: {dev_loss:.3f} | Validation F1_Score: {dev_f1:.3f}\n")
 
         if dev_loss < best_dev_loss:
             best_valid_loss = dev_loss
